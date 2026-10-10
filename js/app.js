@@ -56,7 +56,7 @@ function themeWipe(x,y,next){
   };
   setTimeout(()=>{if(d.isConnected)d.remove();},1600);
 }
-try{applyTheme(localStorage.getItem('cf_theme')||'light');}catch(e){applyTheme('light');}
+try{applyTheme(localStorage.getItem('cf_theme')||'dark');}catch(e){applyTheme('dark');}
 
 const monthKey=()=>`${currentYear}-${String(currentMonth+1).padStart(2,'0')}`;
 const getMonthEntries=()=>entries[monthKey()]||[];
