@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle Financeiro — Gestão Pessoal</title>
+<link rel="icon" href="favicon.ico">
+<meta name="description" content="Controle financeiro pessoal, simples e offline.">
+<meta name="theme-color" content="#0E9F6E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar rise" style="--d:0s">
+    <div class="brand">
+      <img class="brand-logo" src="assets/logo.png" alt="" draggable="false" ondragstart="return false" oncontextmenu="return false" onselectstart="return false">
+      <div class="brand-text">
+      <div class="overline">Gestão pessoal</div>
+      <h1>Controle Financeiro</h1>
+      </div>
+    </div>
+    <div class="header-right">
+      <button class="icon-chip" id="themeBtn" onclick="toggleTheme(event)" title="Alternar tema" aria-label="Alternar tema">
+        <span class="material-symbols-rounded" id="themeIcon">dark_mode</span>
+      </button>
+      <div class="month-nav">
+        <button onclick="changeMonth(-1)" aria-label="Mês anterior"><span class="material-symbols-rounded">chevron_left</span></button>
+        <div class="month-label" id="monthLabel">—</div>
+        <button onclick="changeMonth(1)" aria-label="Próximo mês"><span class="material-symbols-rounded">chevron_right</span></button>
+      </div>
+    </div>
+  </header>
+
+  <section class="summary">
+    <div class="card hero rise" style="--d:.05s">
+      <div class="hero-sky" aria-hidden="true"><span class="st st1"></span><span class="st st2"></span><span class="st st3"></span></div>
+      <div class="hero-content">
+      <div class="card-top">
+        <div class="card-ic ic-balance"><span class="material-symbols-rounded">account_balance_wallet</span></div>
+        <span class="delta" id="balanceDelta"><span class="material-symbols-rounded">trending_up</span><span id="balancePct">—</span></span>
+      </div>
+      <div class="card-label">Saldo do mês</div>
+      <div class="card-value" id="balanceValue">R$ 0,00</div>
+      <div class="card-sub" id="balanceSub">—</div>
+      </div>
+    </div>
+    <div class="card rise" style="--d:.1s">
+      <div class="card-top"><div class="card-ic ic-income"><span class="material-symbols-rounded">trending_up</span></div></div>
+      <div class="card-label">Ganhos</div>
+      <div class="card-value" style="color:var(--income)" id="totalIncome">R$ 0,00</div>
+      <div class="card-sub" id="incomeSub">—</div>
+    </div>
+    <div class="card rise" style="--d:.15s">
+      <div class="card-top"><div class="card-ic ic-expense"><span class="material-symbols-rounded">trending_down</span></div></div>
+      <div class="card-label">Gastos</div>
+      <div class="card-value" style="color:var(--expense)" id="totalExpense">R$ 0,00</div>
+      <div class="card-sub" id="expenseSub">—</div>
+    </div>
+    <div class="card rise" style="--d:.2s">
+      <div class="card-top"><div class="card-ic ic-top"><span class="material-symbols-rounded">emoji_events</span></div></div>
+      <div class="card-label">Maior gasto</div>
+      <div class="card-value" style="color:var(--amber)" id="highestExpense">R$ 0,00</div>
+      <div class="card-sub" id="highestSub">—</div>
+    </div>
+  </section>
+
+  <section class="panel rise" style="--d:.25s">
+    <div class="panel-head">
+      <div>
+        <div class="panel-title">Evolução financeira</div>
+        <div class="panel-sub">Últimos 6 meses · ganhos, gastos e saldo</div>
+      </div>
+      <div class="panel-tools">
+        <div class="legend">
+          <span><i style="background:var(--income)"></i>Ganhos</span>
+          <span><i style="background:var(--expense)"></i>Gastos</span>
+          <span><i style="background:var(--muted)"></i>Saldo</span>
+        </div>
+        <div class="seg">
+          <button id="segBars" class="active" onclick="setChartMode('bars')"><span class="material-symbols-rounded">bar_chart</span>Barras</button>
+          <button id="segArea" onclick="setChartMode('area')"><span class="material-symbols-rounded">show_chart</span>Área</button>
+        </div>
+      </div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div><small>Ganhos · 6 meses</small><strong id="kpiIncome">—</strong></div></div>
+      <div class="kpi"><div><small>Gastos · 6 meses</small><strong id="kpiExpense">—</strong></div></div>
+      <div class="kpi"><div><small>Economia média</small><strong id="kpiSave">—</strong></div></div>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="financeChart"></canvas>
+      <div class="chart-fallback" id="chartFallback"></div>
+    </div>
+    <div class="chart-foot"><span class="material-symbols-rounded">insights</span><span id="chartInsight">—</span></div>
+  </section>
+
+  <div class="toolbar rise" style="--d:.3s">
+    <div class="toolbar-group">
+      <button class="btn btn-primary" onclick="openAddModal('income')"><span class="material-symbols-rounded">arrow_upward</span>Novo ganho</button>
+      <button class="btn btn-dark" onclick="openAddModal('expense')"><span class="material-symbols-rounded">arrow_downward</span>Novo gasto</button>
+    </div>
+    <div class="toolbar-group">
+      <button class="btn btn-ghost" onclick="document.getElementById('importFile').click()"><span class="material-symbols-rounded">upload</span>Importar</button>
+      <button class="btn btn-ghost" onclick="exportJSON()"><span class="material-symbols-rounded">download</span>Exportar</button>
+      <button class="btn btn-ghost" onclick="openClearModal()" title="Apagar todos os dados" aria-label="Apagar todos os dados" style="padding:10px 13px"><span class="material-symbols-rounded">delete_forever</span></button>
+    </div>
+  </div>
+
+  <div class="tabs rise" style="--d:.35s">
+    <button class="tab active" id="tabAll" onclick="setTab('all')"><span class="material-symbols-rounded">list</span>Todos <span class="count" id="countAll">0</span></button>
+    <button class="tab" id="tabExpenses" onclick="setTab('expenses')"><span class="material-symbols-rounded">trending_down</span>Gastos <span class="count" id="countExp">0</span></button>
+    <button class="tab" id="tabIncomes" onclick="setTab('incomes')"><span class="material-symbols-rounded">trending_up</span>Ganhos <span class="count" id="countInc">0</span></button>
+  </div>
+
+  <div class="table-card rise" style="--d:.4s">
+    <table>
+      <thead><tr><th>Descrição</th><th>Data</th><th>Valor</th><th>Status</th><th style="width:124px;text-align:right">Ações</th></tr></thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+  <div class="watermark rise" style="--d:.45s">
+    <span class="wm-line"></span>
+    <p>Desenvolvido por <a href="https://renanwinicyos.com" target="_blank" rel="noopener">renanwinicyos.com</a></p>
+    <span class="wm-line"></span>
+  </div>
+</div>
+
+<div class="overlay" id="modal"><div class="modal">
+  <h2 id="modalTitleText">Adicionar gasto</h2>
+  <div class="modal-sub" id="modalSub">Registre um novo lançamento no mês atual.</div>
+  <div class="field"><label for="description">Descrição</label><input id="description" type="text" placeholder="Ex.: Fatura Nubank" autocomplete="off" maxlength="80"></div>
+  <div class="field"><label for="value">Valor (R$)</label><input id="value" type="number" min="0" step="0.01" placeholder="0,00" inputmode="decimal"></div>
+  <div class="field"><label for="expDate">Data</label><input id="expDate" type="date"></div>
+  <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-dark" id="saveBtn" onclick="saveEntry()">Salvar</button></div>
+</div></div>
+
+<div class="overlay" id="deleteModal"><div class="modal">
+  <div class="delete-icon"><span class="material-symbols-rounded">delete</span></div>
+  <h2>Excluir lançamento</h2>
+  <p class="modal-desc">Tem certeza que deseja excluir <strong id="deleteItemName"></strong>? Esta ação não pode ser desfeita.</p>
+  <div class="modal-actions"><button class="btn btn-ghost" onclick="closeDeleteModal()">Cancelar</button><button class="btn btn-primary" style="background:var(--expense);border-color:var(--expense)" onclick="confirmDelete()">Excluir</button></div>
+</div></div>
+
+<div class="overlay" id="clearModal"><div class="modal">
+  <div class="delete-icon"><span class="material-symbols-rounded">delete_forever</span></div>
+  <h2>Apagar tudo</h2>
+  <p class="modal-desc">Tem certeza que deseja apagar <strong>todos os lançamentos</strong>? Esta ação não pode ser desfeita.</p>
+  <div class="modal-actions"><button class="btn btn-ghost" onclick="closeClearModal()">Cancelar</button><button class="btn btn-primary" style="background:var(--expense);border-color:var(--expense)" onclick="confirmClear()">Apagar tudo</button></div>
+</div></div>
+
+<input type="file" id="importFile" accept=".json,application/json" hidden onchange="importJSON(event)">
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script src="js/app.js" defer></script>
+</body>
+</html>
