@@ -124,19 +124,34 @@ function loadData(){
 
 const bootStart=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
 let bootHidden=false;
+function waitForIconFonts(){
+  try{
+    if(!('fonts' in document)||!document.fonts||!document.fonts.load)return Promise.resolve();
+    const loads=[
+      document.fonts.load('16px "Material Symbols Rounded"'),
+      document.fonts.load('400 24px "Material Symbols Rounded"'),
+      document.fonts.load('600 14px "Inter"')
+    ].map(p=>Promise.resolve(p).catch(()=>{}));
+    const timeout=new Promise(r=>setTimeout(r,2500));
+    const ready=Promise.all(loads).then(()=>{try{return document.fonts.ready;}catch(e){}}).catch(()=>{});
+    return Promise.race([ready,timeout]);
+  }catch(e){return Promise.resolve();}
+}
 function hideBootLoader(){
   if(bootHidden)return;bootHidden=true;
-  // garante um tempo mínimo elegante mesmo em máquinas rápidas
-  let wait=750;
-  try{wait=Math.max(0,750-(performance.now()-bootStart));}catch(e){}
-  setTimeout(()=>{
+  // espera o tempo mínimo elegante + a fonte de ícones (causa do texto "trending_up"/"chevron_left" no print)
+  let minWait=750;
+  try{minWait=Math.max(0,750-(performance.now()-bootStart));}catch(e){}
+  Promise.all([new Promise(r=>setTimeout(r,minWait)),waitForIconFonts()]).then(()=>{
+    try{document.body.classList.add('fonts-ready');}catch(e){}
     const loader=document.getElementById('bootLoader');
     if(loader)loader.classList.add('done');
     document.body.classList.remove('is-loading');
     setTimeout(()=>{if(loader&&loader.parentNode)loader.parentNode.removeChild(loader);},600);
-  },wait);
+  });
 }
-// segurança: nunca prende o usuário no loading
+// se a Font API resolver antes/depois, libera os ícones; nunca prende o usuário no loading
+try{if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{try{document.body.classList.add('fonts-ready');}catch(e){}}).catch(()=>{});}catch(e){}
 setTimeout(hideBootLoader,3500);
 
 function render(){updateMonthLabel(true);renderTable();updateSummary();updateChart();updateCounts();}
