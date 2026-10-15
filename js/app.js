@@ -63,6 +63,10 @@ const getMonthEntries=()=>entries[monthKey()]||[];
 const setMonthEntries=d=>{entries[monthKey()]=d;};
 const saveToStorage=()=>{try{localStorage.setItem('controle_financeiro_v2',JSON.stringify(entries));}catch(e){}};
 const fmt=v=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(v||0);
+const fmtCompact=v=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',notation:'compact',maximumFractionDigits:2}).format(v||0);
+// Valores muito altos (milhões/bi/tri) estouravam os cards — usa forma compacta e guarda o valor cheio no title.
+const fmtSmart=v=>{const a=Math.abs(Number(v)||0);return a>=1000000000?fmtCompact(v):fmt(v);};
+function fitValue(el){if(!el)return;const len=(el.textContent||'').length;el.classList.toggle('is-long',len>16&&len<=24);el.classList.toggle('is-xlong',len>24);}
 const esc=v=>String(v==null?'':v).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'","&#039;");
 const isDark=()=>document.documentElement.dataset.theme==='dark';
 const reduceMotion=()=>window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -87,11 +91,12 @@ function toast(msg,icon){
 function animateValue(el,to,key){
   const from=animated[key]||0;animated[key]=to;
   if(!el)return;
-  if(Math.abs(to-from)<.005||reduceMotion()){el.textContent=fmt(to);return;}
+  const paint=v=>{el.textContent=fmtSmart(v);el.title=fmt(v);fitValue(el);};
+  if(Math.abs(to-from)<.005||reduceMotion()){paint(to);return;}
   if(el._raf)cancelAnimationFrame(el._raf);
   const t0=performance.now(),dur=650;
   const step=n=>{const p=Math.min(1,(n-t0)/dur),e=1-Math.pow(1-p,4);
-    el.textContent=fmt(from+(to-from)*e);
+    paint(from+(to-from)*e);
     if(p<1)el._raf=requestAnimationFrame(step);};
   el._raf=requestAnimationFrame(step);
 }
@@ -114,8 +119,25 @@ function loadData(){
       if(typeof e.createdAt!=='number')e.createdAt=base-(entries[k].length-idx);
     });
   });
-  saveToStorage();render();
+  saveToStorage();render();hideBootLoader();
 }
+
+const bootStart=(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now();
+let bootHidden=false;
+function hideBootLoader(){
+  if(bootHidden)return;bootHidden=true;
+  // garante um tempo mínimo elegante mesmo em máquinas rápidas
+  let wait=750;
+  try{wait=Math.max(0,750-(performance.now()-bootStart));}catch(e){}
+  setTimeout(()=>{
+    const loader=document.getElementById('bootLoader');
+    if(loader)loader.classList.add('done');
+    document.body.classList.remove('is-loading');
+    setTimeout(()=>{if(loader&&loader.parentNode)loader.parentNode.removeChild(loader);},600);
+  },wait);
+}
+// segurança: nunca prende o usuário no loading
+setTimeout(hideBootLoader,3500);
 
 function render(){updateMonthLabel(true);renderTable();updateSummary();updateChart();updateCounts();}
 function updateCounts(){
@@ -154,7 +176,7 @@ function renderTable(){
       :(paid?'<span class="badge paid"><span class="material-symbols-rounded">check_circle</span>Pago</span>':'<span class="badge pending"><span class="material-symbols-rounded">schedule</span>Pendente</span>');
     let html='<td><div class="desc"><span class="avatar '+(inc?'inc':'exp')+'"><span class="material-symbols-rounded">'+(inc?'trending_up':'trending_down')+'</span></span><span>'+esc(e.description)+'</span></div></td>';
     html+='<td class="datecell">'+fmtDate(e.date)+'</td>';
-    html+='<td class="value '+(inc?'income':'expense')+'">'+(inc?'+':'−')+' '+fmt(Number(e.value))+'</td>';
+    html+='<td class="value '+(inc?'income':'expense')+'" title="'+esc(fmt(Number(e.value)))+'">'+(inc?'+':'−')+' '+esc(fmtSmart(Number(e.value)))+'</td>';
     html+='<td class="status-cell">'+status+'</td><td><div class="actions">';
     if(!inc)html+='<button class="icon-btn toggle '+(paid?'is-paid':'')+'" data-act="toggle" data-id="'+e.id+'" title="'+(paid?'Marcar como pendente':'Marcar como pago')+'"><span class="material-symbols-rounded">'+(paid?'check_circle':'radio_button_unchecked')+'</span></button>';
     html+='<button class="icon-btn edit" data-act="edit" data-id="'+e.id+'" title="Editar"><span class="material-symbols-rounded">edit</span></button>';
@@ -204,9 +226,10 @@ function getSeries(){
   return{labels:labels,full:full,inc:inc,exp:exp,bal:bal};
 }
 function updateChartMeta(s){
-  document.getElementById('kpiIncome').textContent=fmt(s.inc.reduce((a,b)=>a+b,0));
-  document.getElementById('kpiExpense').textContent=fmt(s.exp.reduce((a,b)=>a+b,0));
+  const kI=document.getElementById('kpiIncome'),kE=document.getElementById('kpiExpense');
   const totI=s.inc.reduce((a,b)=>a+b,0),totE=s.exp.reduce((a,b)=>a+b,0);
+  kI.textContent=fmtSmart(totI);kI.title=fmt(totI);
+  kE.textContent=fmtSmart(totE);kE.title=fmt(totE);
   document.getElementById('kpiSave').textContent=totI>0?Math.round((totI-totE)/totI*100)+'%':'—';
   let best=0;s.bal.forEach((v,i)=>{if(v>s.bal[best])best=i;});
   document.getElementById('chartInsight').textContent=(totI+totE===0)?'Sem dados nos últimos 6 meses. Adicione lançamentos para ver a evolução.':('Melhor saldo em '+s.full[best]+' ('+fmt(s.bal[best])+') · acumulado de '+fmt(s.bal.reduce((a,b)=>a+b,0))+' no período.');

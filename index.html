@@ -14,7 +14,11 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="css/styles.css">
 </head>
-<body>
+<body class="is-loading">
+<div id="bootLoader" role="status" aria-label="Carregando">
+  <div class="boot-spinner" aria-hidden="true"></div>
+  <div class="boot-text">Carregando...</div>
+</div>
 <div class="app">
 
   <header class="topbar rise" style="--d:0s">
